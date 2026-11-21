@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#071a43">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <meta name="description" content="Grid Foto Studio Polsek Jatirogo - Polresta Tuban">
 <title>Grid Foto Studio | Polsek Jatirogo</title>
 <style>
@@ -200,7 +204,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}img{max-width:10
           <button class="btn btn-light btn-block" id="saveFrameSettings" type="button">Simpan Pengaturan Bingkai</button>
         </details>
         <div class="divider"></div>
-        <button class="btn btn-gold btn-block" id="downloadBtn" type="button">⇩ Unduh PNG</button>
+        <button class="btn btn-gold btn-block" id="downloadBtn" type="button">⇩ Unduh JPG HD</button>
         <p class="footnote">Bingkai disimpan di browser/perangkat yang sama ini.</p>
       </div>
     </section>
@@ -208,7 +212,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}img{max-width:10
     <section class="panel preview-panel">
       <div class="panel-head"><h3>2. PRATINJAU HASIL GRID</h3><span class="status" id="previewStatus">Siap diedit</span></div>
       <div class="preview-canvas-wrap"><div class="canvas-holder"><canvas id="outputCanvas" width="900" height="1014"></canvas></div></div>
-      <div class="preview-footer"><span id="canvasInfo">Ukuran mengikuti resolusi bingkai</span><span>Hasil unduh: PNG kualitas penuh</span></div>
+      <div class="preview-footer"><span id="canvasInfo">Ukuran mengikuti resolusi bingkai</span><span>Hasil unduh: JPG HD (siap kirim WA)</span></div>
     </section>
 
     <aside class="right-col">
@@ -288,7 +292,7 @@ async function renameFrame(id){const f=frames.find(x=>x.id===id);if(!f)return;co
 async function deleteFrame(id){await remove('frames',id);if(currentFrame?.id===id)currentFrame=null;await refreshData();if(!currentFrame&&frames.length)await selectFrame(frames[0].id);else await renderPreview();toast('Bingkai dihapus.')}
 function askConfirm(title,message,action){$('modalTitle').textContent=title;$('modalText').textContent=message;$('confirmModal').classList.add('open');$('modalConfirm').onclick=async()=>{$('confirmModal').classList.remove('open');await action()}}
 $('modalCancel').onclick=()=>$('confirmModal').classList.remove('open');$('confirmModal').addEventListener('click',e=>{if(e.target===$('confirmModal'))$('confirmModal').classList.remove('open')});
-function initCaptionTemplates(){const sel=$('captionTemplate');sel.innerHTML='';CAPTIONS.forEach(([id,text,label])=>sel.add(new Option(label,id)));sel.value='c01';$('caption').value=CAPTIONS[0][1]}
+function initCaptionTemplates(){const sel=$('captionTemplate');sel.innerHTML='';sel.add(new Option('— Pilih template keterangan —',''));CAPTIONS.forEach(([id,text,label])=>sel.add(new Option(label,id)));sel.value='';$('caption').value=''}
 function setPhotos(list){const f=list.filter(Boolean).slice(0,4);photoBlobs=[...f,null,null,null,null].slice(0,4);photoCount=f.length}
 function updateAutoCount(){const n=photoCount,L=['','1 foto penuh','1 besar atas + 1 kecil tengah','1 besar atas + 2 kecil bawah','2 × 2'];$('autoCount').textContent=n?`Otomatis: ${n} foto • ${L[n]}`:'Belum ada foto. Layout menyesuaikan jumlah foto.'}
 function renderPhotoSlots(){
@@ -363,11 +367,13 @@ async function renderPreview(){
 }
 async function saveFrameSettings(){if(!currentFrame){toast('Pilih bingkai terlebih dahulu.');return}currentFrame.settings=readFrameSettings();await put('frames',currentFrame);await refreshData();await renderPreview();toast('Pengaturan bingkai dan posisi tulisan disimpan.')}
 async function uploadFrame(file){if(!file)return;if(!file.type.startsWith('image/')){toast('Pilih file gambar PNG, JPG, atau WEBP.');return}const isPng=file.type==='image/png';const record={id:makeId(),name:file.name.replace(/\.[^.]+$/,'')||'Bingkai baru',blob:file,type:file.type,createdAt:Date.now(),settings:{...DEFAULT_CUT,enabled:!isPng}};await put('frames',record);await refreshData();await selectFrame(record.id);toast('Bingkai berhasil disimpan di perpustakaan.')}
-function resetProject(){currentProjectId=null;setPhotos([]);$('captionTemplate').value='c01';$('caption').value=CAPTIONS[0][1];$('dateInput').value=todayISO();updateDatePreview();renderPhotoSlots();renderPreview();toast('Form dikosongkan.')}
-function downloadPNG(){
+function resetProject(){currentProjectId=null;setPhotos([]);$('captionTemplate').value='';$('caption').value='';$('dateInput').value=todayISO();updateDatePreview();renderPhotoSlots();renderPreview();toast('Form dikosongkan.')}
+function downloadJPG(){
   if(!currentFrame){toast('Pilih bingkai terlebih dahulu.');return}
   if(!photoCount){toast('Tambahkan minimal 1 foto sebelum mengunduh.');return}
-  canvas.toBlob(blob=>{if(!blob){toast('Gagal membuat file PNG.');return}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;const base='grid-foto-'+($('dateInput').value||'kegiatan');a.download=`${base||'grid-foto-kegiatan'}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1800);toast('PNG berhasil dibuat dan diunduh.')},'image/png')
+  // JPG tidak punya transparansi: tempel ke latar putih, ukuran penuh (HD) sesuai bingkai.
+  const out=document.createElement('canvas');out.width=canvas.width;out.height=canvas.height;const o=out.getContext('2d');o.fillStyle='#ffffff';o.fillRect(0,0,out.width,out.height);o.drawImage(canvas,0,0);
+  out.toBlob(blob=>{if(!blob){toast('Gagal membuat file JPG.');return}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`grid-foto-${$('dateInput').value||'kegiatan'}.jpg`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1800);toast('JPG HD berhasil diunduh.')},'image/jpeg',0.95)
 }
 $('frameSelect').onchange=e=>selectFrame(e.target.value);
 $('frameUpload').onchange=e=>{uploadFrame(e.target.files?.[0]);e.target.value=''};
@@ -376,7 +382,7 @@ $('renameFrameBtn').onclick=()=>currentFrame?renameFrame(currentFrame.id):toast(
 $('bulkPhotos').onchange=async e=>{const files=[...(e.target.files||[])];setPhotos(files);renderPhotoSlots();await renderPreview();if(e.target.files.length>4)toast('Hanya 4 foto pertama yang dimasukkan.');e.target.value=''};
 $('captionTemplate').onchange=e=>{const item=CAPTIONS.find(c=>c[0]===e.target.value);if(item&&item[0]!=='custom')$('caption').value=item[1];renderPreview()};
 $('caption').oninput=()=>renderPreview();$('dateInput').onchange=()=>{updateDatePreview();renderPreview()};
-$('saveFrameSettings').onclick=saveFrameSettings;$('downloadBtn').onclick=downloadPNG;$('newBtn').onclick=resetProject;
+$('saveFrameSettings').onclick=saveFrameSettings;$('downloadBtn').onclick=downloadJPG;$('newBtn').onclick=resetProject;
 async function init(){
   try{db=await openDB();await refreshData();await seedSampleFrame();await refreshData();
     // Perbarui posisi tulisan untuk bingkai contoh lama yang pernah tersimpan dari versi sebelumnya.
@@ -388,6 +394,9 @@ async function init(){
   }catch(e){console.error(e);$('storageStatus').textContent='Penyimpanan tidak tersedia';toast('Browser tidak mendukung penyimpanan lokal. Gunakan Chrome/Edge versi terbaru.')}
 }
 init();
+</script>
+<script>
+if('serviceWorker' in navigator && /^https?:/.test(location.protocol)){navigator.serviceWorker.register('sw.js').catch(err=>console.warn('Mode offline belum aktif',err))}
 </script>
 </body>
 </html>
