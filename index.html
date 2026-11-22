@@ -497,7 +497,7 @@ if('serviceWorker' in navigator && /^https?:/.test(location.protocol)){navigator
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 (()=>{
-const G={photos:[],loc:null};
+const G={photos:[],loc:null,off:[]};
 const HARI=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 const BOUNDS=[[-6.96,111.55],[-6.78,111.82]];
 const VIEWBOX='111.55,-6.78,111.82,-6.96';
@@ -599,6 +599,18 @@ g$('gpsMyLoc').onclick=()=>{
   navigator.geolocation.getCurrentPosition(p=>{ensureMap();desaManual=false;tempatManual=false;gpsMap.setView([p.coords.latitude,p.coords.longitude],17)},()=>toast('Izinkan akses lokasi di browser.'),{enableHighAccuracy:true});
 };
 
+function makeOffsets(n){
+  const la=G.loc?G.loc.lat:-6.85;
+  return Array.from({length:n},()=>{
+    const r=15+Math.random()*30,t=Math.random()*2*Math.PI;
+    return{dlat:r*Math.cos(t)/111320,dlon:r*Math.sin(t)/(111320*Math.cos(la*Math.PI/180))};
+  });
+}
+function ptFor(i){
+  if(!G.off[i])G.off[i]=makeOffsets(1)[0];
+  const o=G.off[i];
+  return{lat:G.loc.lat+o.dlat,lon:G.loc.lon+o.dlon};
+}
 function stampTime(i){
   const d=g$('gpsDate').value,t=g$('gpsTime').value;if(!d||!t)return '';
   const[y,m,dd]=d.split('-').map(Number),[hh,mm]=t.split(':').map(Number);
@@ -630,7 +642,8 @@ async function stamp(i){
   const F=readFields(),desa=T(F.desa),tempat=T(F.tempat);
   const title=[tempat,desa,F.kec?'Kec. '+F.kec:'',F.kab?'Kabupaten '+F.kab:'',F.prov,F.neg].filter(Boolean).join(', ');
   const addr=[tempat,desa,F.kec,F.kab,F.prov,F.neg].filter(Boolean).join(', ');
-  const rows=[[title,17*s,'bold'],[addr,13.5*s,'normal'],[`Lat ${fmt(G.loc.lat)}° Long ${fmt(G.loc.lon)}°`,13.5*s,'normal'],[stampTime(i),13.5*s,'normal']];
+  const pt=ptFor(i);
+  const rows=[[title,17*s,'bold'],[addr,13.5*s,'normal'],[`Lat ${fmt(pt.lat)}° Long ${fmt(pt.lon)}°`,13.5*s,'normal'],[stampTime(i),13.5*s,'normal']];
   let k=1,L=layout(g,rows,mw,k);
   while(L.h>H*0.28&&k>0.6){k-=0.04;L=layout(g,rows,mw,k)}
   const ph=Math.round(L.h+pad*2),top=H-ph+pad;
@@ -651,7 +664,7 @@ async function refresh(){
 }
 ['gpsTempat','gpsDate','gpsTime','gpsStep'].forEach(id=>g$(id).oninput=refresh);
 g$('gpsPhotos').onchange=e=>{
-  G.photos=[...e.target.files];const s=g$('gpsSel');s.innerHTML='';
+  G.photos=[...e.target.files];G.off=makeOffsets(G.photos.length);const s=g$('gpsSel');s.innerHTML='';
   G.photos.forEach((f,i)=>s.add(new Option(`Foto ${i+1} - ${f.name}`,i)));
   refresh();
 };
