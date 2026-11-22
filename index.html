@@ -632,11 +632,11 @@ function layout(g,rows,mw,k){
   });
   return{out,h:y};
 }
-async function stamp(i){
+async function stamp(i,maxSide){
   const bmp=await createImageBitmap(G.photos[i]);
-  const W=bmp.width,H=bmp.height,s=Math.min(W,H)/467;
+  const sc=maxSide?Math.min(1,maxSide/Math.max(bmp.width,bmp.height)):1;const W=Math.round(bmp.width*sc),H=Math.round(bmp.height*sc),s=Math.min(W,H)/467;
   const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
-  g.drawImage(bmp,0,0);
+  g.drawImage(bmp,0,0,W,H);
   if(!G.loc)return c;
   const pad=Math.round(12*s),mw=W-pad*2;
   const F=readFields(),desa=T(F.desa),tempat=T(F.tempat);
@@ -658,7 +658,7 @@ async function refresh(){
   readLoc();
   const id=++rid;
   if(!G.photos.length){const pv=g$('gpsPreview');pv.width=pv.height=0;return}
-  const c=await stamp(+g$('gpsSel').value||0);
+  const c=await stamp(+g$('gpsSel').value||0,1000);
   if(id!==rid)return;
   const pv=g$('gpsPreview');pv.width=c.width;pv.height=c.height;pv.getContext('2d').drawImage(c,0,0);
 }
@@ -677,16 +677,23 @@ function needLoc(){
 }
 g$('gpsToGrid').onclick=async()=>{
   if(!needLoc())return;
-  if(G.photos.length>4)toast('Grid hanya 4 foto. Yang dikirim 4 foto pertama.');
-  const files=[];
-  for(let i=0;i<Math.min(4,G.photos.length);i++){
-    const c=await stamp(i);
-    const b=await new Promise(res=>c.toBlob(res,'image/jpeg',0.95));
-    files.push(new File([b],`gps-foto-${i+1}.jpg`,{type:'image/jpeg'}));
-  }
-  setPhotos(files);renderPhotoSlots();await renderPreview();
-  document.querySelector('.tab[data-view="grid"]').click();
-  toast('Foto GPS sudah masuk ke Grid. Lanjutkan isi keterangan.');
+  const btn=g$('gpsToGrid'),old=btn.textContent,n=Math.min(4,G.photos.length);
+  btn.disabled=true;
+  try{
+    const files=[];
+    for(let i=0;i<n;i++){
+      btn.textContent=`Memproses foto ${i+1} dari ${n}...`;
+      await new Promise(r=>setTimeout(r,0));
+      const c=await stamp(i,1600);
+      const b=await new Promise(res=>c.toBlob(res,'image/jpeg',0.92));
+      files.push(new File([b],`gps-foto-${i+1}.jpg`,{type:'image/jpeg'}));
+    }
+    if(G.photos.length>4)toast('Grid hanya 4 foto. Yang dikirim 4 foto pertama.');
+    setPhotos(files);renderPhotoSlots();await renderPreview();
+    document.querySelector('.tab[data-view="grid"]').click();
+    toast('Foto GPS sudah masuk ke Grid. Lanjutkan isi keterangan.');
+  }catch(e){toast('Gagal memproses foto. Coba lagi.')}
+  finally{btn.disabled=false;btn.textContent=old}
 };
 })();
 </script>
