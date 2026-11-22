@@ -226,7 +226,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}img{max-width:10
           <button class="btn btn-light btn-block" id="saveFrameSettings" type="button">Simpan Pengaturan Bingkai</button>
         </details>
         <div class="divider"></div>
-        <button class="btn btn-gold btn-block" id="downloadBtn" type="button">⇩ Unduh JPG HD</button>
+        <div class="field" style="margin-top:4px"><label>Unduh hasil (satu per satu)</label><div id="dlList" style="display:grid;gap:8px"></div><button class="btn btn-primary" id="dlAll" type="button" style="width:100%;margin-top:8px">Unduh Semua (grid + foto)</button></div>
+      <button class="btn btn-gold btn-block" id="downloadBtn" type="button">⇩ Unduh Hasil Grid (JPG HD)</button>
         <p class="footnote">Bingkai disimpan di browser/perangkat yang sama ini.</p>
       </div>
     </section>
@@ -294,8 +295,6 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}img{max-width:10
     <div class="panel-body">
       <div class="field"><label for="gpsSel">Foto yang dipratinjau</label><select id="gpsSel"></select></div>
       <canvas id="gpsPreview"></canvas>
-      <div id="gpsList" style="margin-top:12px;display:grid;gap:8px"></div>
-      <button class="btn btn-primary" id="gpsDownAll" type="button" style="width:100%;margin-top:10px">Unduh Semua (satu per satu)</button>
       <button class="btn btn-primary" id="gpsToGrid" type="button" style="width:100%;margin-top:10px">Kirim ke Grid untuk isi keterangan</button>
     </div>
   </div>
@@ -368,15 +367,39 @@ $('modalCancel').onclick=()=>$('confirmModal').classList.remove('open');$('confi
 function initCaptionTemplates(){const sel=$('captionTemplate');sel.innerHTML='';sel.add(new Option('— Pilih template keterangan —',''));CAPTIONS.forEach(([id,text,label])=>sel.add(new Option(label,id)));sel.value='';$('caption').value=''}
 function setPhotos(list){const f=list.filter(Boolean).slice(0,4);photoBlobs=[...f,null,null,null,null].slice(0,4);photoCount=f.length}
 function updateAutoCount(){const n=photoCount,L=['','1 foto penuh','1 besar atas + 1 kecil tengah','1 besar atas + 2 kecil bawah','2 × 2'];$('autoCount').textContent=n?`Otomatis: ${n} foto • ${L[n]}`:'Belum ada foto. Layout menyesuaikan jumlah foto.'}
+function dlPhoto(i){
+  const b=photoBlobs[i];if(!b)return;
+  const u=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=u;a.download=`foto-${i+1}.${b.type==='image/png'?'png':'jpg'}`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(u),1800);
+}
+function renderDlList(){
+  const box=$('dlList');if(!box)return;box.innerHTML='';
+  photoBlobs.slice(0,photoCount).forEach((b,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;gap:8px;align-items:center;justify-content:space-between';
+    const n=document.createElement('span');n.style.cssText='font-size:13px;font-weight:700';n.textContent='Foto '+(i+1);
+    const btn=document.createElement('button');btn.type='button';btn.className='btn btn-gold btn-small';btn.textContent='Unduh';
+    btn.onclick=()=>dlPhoto(i);
+    row.append(n,btn);box.append(row);
+  });
+}
+$('dlAll').onclick=async()=>{
+  if(!photoCount){toast('Tambahkan foto dulu.');return}
+  downloadJPG();
+  await new Promise(r=>setTimeout(r,1000));
+  for(let i=0;i<photoCount;i++){dlPhoto(i);await new Promise(r=>setTimeout(r,900))}
+  toast('Hasil grid dan semua foto sudah diunduh satu per satu.');
+};
 function renderPhotoSlots(){
-  const cont=$('photoSlots');cont.innerHTML='';updateAutoCount();
+  const cont=$('photoSlots');cont.innerHTML='';updateAutoCount();renderDlList();
   for(let i=0;i<4;i++){
     const blob=photoBlobs[i];const slot=document.createElement('div');slot.className='photo-slot'+(blob?' filled':'');
     const top=document.createElement('div');top.className='slot-top';const b=document.createElement('b');b.textContent=`Foto ${i+1}`;const status=document.createElement('span');status.style.cssText='font-size:9px;color:#8394aa';status.textContent=blob?'SIAP':'KOSONG';top.append(b,status);slot.append(top);
     if(blob){const img=document.createElement('img');img.className='slot-thumb';const u=URL.createObjectURL(blob);img.src=u;img.onload=()=>URL.revokeObjectURL(u);slot.append(img)}else{const empty=document.createElement('div');empty.className='slot-empty';empty.textContent='＋';slot.append(empty)}
     const name=document.createElement('div');name.className='slot-name';name.textContent=blob?.name|| (blob?'Foto tersimpan':'Belum ada foto');slot.append(name);
     const actions=document.createElement('div');actions.className='slot-actions';const choose=document.createElement('label');choose.className='btn btn-light';choose.textContent=blob?'Ganti Foto':'Pilih Foto';const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=async()=>{if(input.files?.[0]){const list=[...photoBlobs];list[i]=input.files[0];setPhotos(list);renderPhotoSlots();await renderPreview()}};choose.append(input);actions.append(choose);
-    if(blob){const dl=document.createElement('button');dl.className='btn btn-gold';dl.type='button';dl.textContent='Unduh';dl.onclick=()=>{const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=`foto-grid-${i+1}.${blob.type==='image/png'?'png':'jpg'}`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1800)};actions.append(dl);const clear=document.createElement('button');clear.className='btn btn-danger';clear.type='button';clear.textContent='Hapus';clear.onclick=async()=>{const list=[...photoBlobs];list[i]=null;setPhotos(list);renderPhotoSlots();await renderPreview()};actions.append(clear)}slot.append(actions);cont.append(slot)
+    if(blob){const clear=document.createElement('button');clear.className='btn btn-danger';clear.type='button';clear.textContent='Hapus';clear.onclick=async()=>{const list=[...photoBlobs];list[i]=null;setPhotos(list);renderPhotoSlots();await renderPreview()};actions.append(clear)}slot.append(actions);cont.append(slot)
   }
 }
 function layoutBoxes(n,r,gap){const {x,y,w,h}=r;if(n===1)return [{x,y,w,h}];if(n===2){const topH=(h-gap)*.6,bottomH=h-gap-topH,bw=(w-gap)/2;return [{x,y,w,h:topH},{x:x+(w-bw)/2,y:y+topH+gap,w:bw,h:bottomH}]}if(n===3){const topH=(h-gap)*.49,bottomH=h-gap-topH,half=(w-gap)/2;return [{x,y,w,h:topH},{x,y:y+topH+gap,w:half,h:bottomH},{x:x+half+gap,y:y+topH+gap,w:half,h:bottomH}]}const halfW=(w-gap)/2,halfH=(h-gap)/2;return [{x,y,w:halfW,h:halfH},{x:x+halfW+gap,y,w:halfW,h:halfH},{x,y:y+halfH+gap,w:halfW,h:halfH},{x:x+halfW+gap,y:y+halfH+gap,w:halfW,h:halfH}]}
@@ -629,7 +652,7 @@ async function refresh(){
 ['gpsTempat','gpsDate','gpsTime','gpsStep'].forEach(id=>g$(id).oninput=refresh);
 g$('gpsPhotos').onchange=e=>{
   G.photos=[...e.target.files];const s=g$('gpsSel');s.innerHTML='';
-  G.photos.forEach((f,i)=>s.add(new Option(`Foto ${i+1} - ${f.name}`,i)));renderGpsList();
+  G.photos.forEach((f,i)=>s.add(new Option(`Foto ${i+1} - ${f.name}`,i)));
   refresh();
 };
 g$('gpsSel').onchange=refresh;
@@ -639,31 +662,6 @@ function needLoc(){
   if(!G.loc){toast('Geser peta ke lokasi dulu.');return false}
   return true;
 }
-function save(i){
-  return stamp(i).then(c=>new Promise(res=>c.toBlob(b=>{
-    const u=URL.createObjectURL(b),a=document.createElement('a');
-    a.href=u;a.download=`gps-foto-${i+1}.jpg`;a.click();
-    setTimeout(()=>URL.revokeObjectURL(u),1800);res();
-  },'image/jpeg',0.95)));
-}
-function renderGpsList(){
-  const box=g$('gpsList');box.innerHTML='';
-  G.photos.forEach((f,i)=>{
-    const row=document.createElement('div');
-    row.style.cssText='display:flex;gap:8px;align-items:center;justify-content:space-between';
-    const name=document.createElement('span');
-    name.style.cssText='font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-    name.textContent=`Foto GPS ${i+1}`;
-    const b=document.createElement('button');b.type='button';b.className='btn btn-gold btn-small';b.textContent='Unduh JPG';
-    b.onclick=async()=>{if(needLoc())await save(i)};
-    row.append(name,b);box.append(row);
-  });
-}
-g$('gpsDownAll').onclick=async()=>{
-  if(!needLoc())return;
-  for(let i=0;i<G.photos.length;i++){await save(i);await new Promise(r=>setTimeout(r,900))}
-  toast('Semua foto GPS sudah diunduh satu per satu.');
-};
 g$('gpsToGrid').onclick=async()=>{
   if(!needLoc())return;
   if(G.photos.length>4)toast('Grid hanya 4 foto. Yang dikirim 4 foto pertama.');
