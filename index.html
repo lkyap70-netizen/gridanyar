@@ -150,9 +150,31 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}img{max-width:10
   img,canvas{max-width:100%}
   .row2>*{min-width:0}
 }
+
+/* ===== Menu & Foto GPS ===== */
+[hidden]{display:none!important}
+.tabs{position:sticky;top:0;z-index:30;display:flex;gap:8px;padding:10px 14px;background:#06215a;border-bottom:3px solid var(--gold)}
+.tab{flex:1;max-width:220px;padding:10px;border:1px solid #ffe49a66;border-radius:10px;background:transparent;color:#fff;font-weight:800;cursor:pointer}
+.tab.active{background:var(--gold);color:#0a2556;border-color:var(--gold)}
+.gps-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:14px;max-width:1200px;margin:0 auto;padding:14px}
+#gpsPreview{width:100%;height:auto;display:block;border-radius:8px;background:#e8edf5}
+@media (max-width:760px){.gps-wrap{grid-template-columns:minmax(0,1fr)}.gps-wrap>.panel{grid-row:auto!important}}
+/* ===== Peta GPS ===== */
+.gpsmap-wrap{position:relative;border-radius:10px;overflow:hidden;border:1px solid #cbd7e6}
+#gpsMap{height:340px;width:100%;background:#dfe7f1}
+.gps-pin{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-31px 0 0 -13px;background:#e53935;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 6px #0007;pointer-events:none;z-index:500}
+@media (max-width:760px){#gpsMap{height:300px}}
+
+/* ===== Pencarian di atas peta ===== */
+.gps-search{position:absolute;top:10px;left:10px;right:60px;z-index:1000;display:flex;gap:6px}
+.gps-search input{flex:1;min-width:0;padding:9px 10px;border:1px solid #9fb3cc;border-radius:8px;font-size:16px;background:#fff;box-shadow:0 2px 6px #0003}
+.gps-search button{padding:9px 12px;white-space:nowrap;box-shadow:0 2px 6px #0003}
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 </head>
 <body>
+<nav class="tabs"><button class="tab active" type="button" data-view="grid">Grid Foto</button><button class="tab" type="button" data-view="gps">Foto GPS</button></nav>
+<div id="viewGrid">
 <header class="topbar">
   <div class="brand">
     
@@ -227,6 +249,59 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}img{max-width:10
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal-back" id="confirmModal"><div class="modal"><h3 id="modalTitle">Konfirmasi</h3><p id="modalText"></p><div class="modal-actions"><button class="btn btn-light" id="modalCancel" type="button">Batal</button><button class="btn btn-danger" id="modalConfirm" type="button">Hapus</button></div></div></div>
+</div>
+<section id="viewGPS" class="gps-wrap" hidden>
+  <div class="panel" style="grid-row:span 2">
+    <div class="panel-head"><h3>1. Foto &amp; Lokasi</h3></div>
+    <div class="panel-body">
+      <div class="field"><label for="gpsPhotos">Pilih foto (bisa banyak)</label><input autocomplete="off" id="gpsPhotos" type="file" accept="image/*" multiple></div>
+      <div class="field"><label>Cari desa atau geser peta sampai pin merah tepat di lokasi</label>
+        <div class="gpsmap-wrap"><div id="gpsMap"></div><div class="gps-pin"></div><div class="gps-search"><input autocomplete="off" id="gpsSearch" type="text" placeholder="Cari desa atau tempat di Jatirogo, lalu Enter"><button class="btn btn-primary btn-small" id="gpsSearchBtn" type="button">Cari</button></div></div>
+        <small>Batas Kecamatan Jatirogo ditandai garis kuning. Pilih Satelit atau Peta jalan di pojok kanan atas peta.</small><div id="gpsStatus" style="font-size:12px;font-weight:700;margin-top:6px"></div>
+      </div>
+      <button class="btn btn-light" id="gpsMyLoc" type="button" style="width:100%">Tampilkan lokasi saya</button>
+      <div class="row2" style="margin-top:12px">
+        <div class="field"><label for="gpsLat">Latitude</label><input autocomplete="off" id="gpsLat" type="text" readonly></div>
+        <div class="field"><label for="gpsLon">Longitude</label><input autocomplete="off" id="gpsLon" type="text" readonly></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="gpsTempat">Nama tempat (opsional)</label><input autocomplete="off" id="gpsTempat" type="text" placeholder="Otomatis dari posisi pin"></div>
+        <div class="field"><label for="gpsDesa">Desa / Kelurahan</label><input autocomplete="off" id="gpsDesa" type="text"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="gpsKec">Kecamatan</label><input autocomplete="off" id="gpsKec" type="text" value="Jatirogo" readonly></div>
+        <div class="field"><label for="gpsKab">Kabupaten</label><input autocomplete="off" id="gpsKab" type="text" value="Tuban" readonly></div>
+      </div>
+      <div>
+        <div class="field"><label for="gpsProv">Provinsi</label><input autocomplete="off" id="gpsProv" type="text" value="Jawa Timur" readonly></div>
+        
+      </div>
+      <div class="field"><label for="gpsNeg">Negara</label><input autocomplete="off" id="gpsNeg" type="text" value="Indonesia" readonly></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>2. Tanggal &amp; Jam</h3></div>
+    <div class="panel-body">
+      <div class="row2">
+        <div class="field"><label for="gpsDate">Tanggal</label><input autocomplete="off" id="gpsDate" type="date"></div>
+        <div class="field"><label for="gpsTime">Jam</label><input autocomplete="off" id="gpsTime" type="time"></div>
+      </div>
+      <div class="field"><label for="gpsStep">Selisih menit antar foto</label><input autocomplete="off" id="gpsStep" type="number" value="0" min="0"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>3. Pratinjau</h3></div>
+    <div class="panel-body">
+      <div class="field"><label for="gpsSel">Foto yang dipratinjau</label><select id="gpsSel"></select></div>
+      <canvas id="gpsPreview"></canvas>
+      <div class="row2" style="margin-top:12px">
+        <button class="btn btn-gold" id="gpsDown" type="button">Unduh JPG</button>
+        <button class="btn btn-primary" id="gpsDownAll" type="button">Unduh Semua</button>
+      </div>
+      <button class="btn btn-primary" id="gpsToGrid" type="button" style="width:100%;margin-top:10px">Kirim ke Grid untuk isi keterangan</button>
+    </div>
+  </div>
+</section>
 <script>
 'use strict';
 const DB_NAME='GridFotoStudioDB', DB_VERSION=1;
@@ -397,6 +472,199 @@ init();
 </script>
 <script>
 if('serviceWorker' in navigator && /^https?:/.test(location.protocol)){navigator.serviceWorker.register('sw.js').catch(err=>console.warn('Mode offline belum aktif',err))}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+(()=>{
+const G={photos:[],loc:null};
+const HARI=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const BOUNDS=[[-6.96,111.55],[-6.78,111.82]];
+const VIEWBOX='111.55,-6.78,111.82,-6.96';
+const AT_KEC=['subdistrict','district','county','municipality','state','region','province'];
+const START=[-6.852106,111.650939];
+const g$=id=>document.getElementById(id);
+const p2=n=>String(n).padStart(2,'0');
+const fmt=v=>Number(v).toFixed(6).replace('.',',');
+const num=v=>parseFloat(String(v).replace(',','.'));
+const T=t=>String(t||'').replace(/\b\w/g,ch=>ch.toUpperCase());
+let gpsMap=null,revT=null,desaManual=false,tempatManual=false,outside=false;
+
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));
+  g$('viewGrid').hidden=b.dataset.view!=='grid';
+  g$('viewGPS').hidden=b.dataset.view!=='gps';
+  if(b.dataset.view==='gps')setTimeout(ensureMap,0);
+});
+
+const nowWIB=new Date(Date.now()+7*3600e3);
+g$('gpsDate').value=nowWIB.toISOString().slice(0,10);
+g$('gpsTime').value=nowWIB.toISOString().slice(11,16);
+g$('gpsKec').value='Jatirogo';g$('gpsKab').value='Tuban';g$('gpsProv').value='Jawa Timur';g$('gpsNeg').value='Indonesia';
+
+function readFields(){return{tempat:g$('gpsTempat').value.trim(),desa:g$('gpsDesa').value.trim(),kec:g$('gpsKec').value.trim(),kab:g$('gpsKab').value.trim(),prov:g$('gpsProv').value.trim(),neg:g$('gpsNeg').value.trim()}}
+function readLoc(){const la=num(g$('gpsLat').value),lo=num(g$('gpsLon').value);G.loc=(isNaN(la)||isNaN(lo)||outside)?null:{lat:la,lon:lo}}
+function setLoc(la,lo){g$('gpsLat').value=fmt(la);g$('gpsLon').value=fmt(lo);refresh()}
+
+function ensureMap(){
+  if(gpsMap){gpsMap.invalidateSize();return}
+  if(typeof L==='undefined'){toast('Peta belum bisa dimuat. Periksa koneksi internet.');return}
+  const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles &copy; Esri',maxZoom:19});
+  const jalan=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap',maxZoom:19,subdomains:'abc'});
+  gpsMap=L.map('gpsMap',{zoomControl:false,center:START,zoom:16,minZoom:13,maxZoom:19,layers:[sat],maxBounds:BOUNDS,maxBoundsViscosity:1.0});
+  L.control.layers({'Satelit':sat,'Peta jalan':jalan},null,{position:'topright'}).addTo(gpsMap);
+  L.control.zoom({position:'bottomright'}).addTo(gpsMap);
+  gpsMap.on('moveend',onMove);loadKecBoundary();
+  onMove();
+}
+async function doSearch(){
+  const q=g$('gpsSearch').value.trim();
+  if(!q||!gpsMap)return;
+  const st=g$('gpsStatus');st.style.color='#0a2556';st.textContent='Mencari "'+q+'"...';
+  try{
+    const u=`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=10&countrycodes=id&accept-language=id&bounded=1&viewbox=${VIEWBOX}&q=${encodeURIComponent(q+' Jatirogo Tuban')}`;
+    const list=(await (await fetch(u)).json()).filter(it=>/jatirogo/i.test(it.display_name)&&!AT_KEC.includes(it.addresstype));
+    if(!list.length){st.style.color='#b3261e';st.textContent='Tidak ditemukan di Kecamatan Jatirogo. Coba nama desa atau tempat lain.';return}
+    const it=list[0];
+    desaManual=false;
+    tempatManual=false;gpsMap.setView([+it.lat,+it.lon],17);
+    st.textContent='Peta pindah ke '+T(it.name)+'. Geser pin kalau perlu.';
+  }catch(e){st.style.color='#b3261e';st.textContent='Gagal mencari. Periksa koneksi internet.'}
+}
+g$('gpsSearchBtn').onclick=doSearch;
+g$('gpsSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doSearch()}});
+function onMove(){
+  const c=gpsMap.getCenter();
+  setLoc(c.lat,c.lng);
+  clearTimeout(revT);
+  revT=setTimeout(()=>checkPoint(c.lat,c.lng),800);
+}
+async function loadKecBoundary(){
+  try{
+    const u='https://nominatim.openstreetmap.org/search?format=jsonv2&polygon_geojson=1&limit=5&countrycodes=id&accept-language=id&q='+encodeURIComponent('Kecamatan Jatirogo, Kabupaten Tuban');
+    const list=await (await fetch(u)).json();
+    const it=list.find(x=>/jatirogo/i.test(x.display_name)&&/tuban/i.test(x.display_name)&&x.geojson&&/Polygon/.test(x.geojson.type));
+    if(it)L.geoJSON(it.geojson,{interactive:false,style:{color:'#f4c64b',weight:3,fillColor:'#f4c64b',fillOpacity:0.06}}).addTo(gpsMap);
+  }catch(e){}
+}
+async function checkPoint(la,lo){
+  const st=g$('gpsStatus');
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=id&lat=${la}&lon=${lo}`);
+    const it=await r.json();
+    const a=it.address||{};
+    const kec=a.subdistrict||a.district||a.city_district||'';
+    outside=!!kec&&!/jatirogo/i.test(kec);
+    if(outside){
+      st.style.color='#b3261e';
+      st.textContent=`Titik ini di luar Kecamatan Jatirogo (${T(kec)}). Geser pin ke dalam batas kecamatan.`;
+    }else{
+      st.style.color='#1b5e20';
+      st.textContent='Titik berada di Kecamatan Jatirogo.';
+      const d=T(a.village||a.hamlet||(/jatirogo/i.test(a.suburb||'')?'':(a.suburb||'')));
+      if(!desaManual)g$('gpsDesa').value=d;
+      if(!tempatManual){
+        const nm=T(it.name||'');
+        const pick=(nm&&nm!==d&&!AT_KEC.includes(it.addresstype)&&!/^(kecamatan|kabupaten)/i.test(nm))?nm:T(a.road||'');
+        g$('gpsTempat').value=pick;
+      }
+    }
+    refresh();
+  }catch(e){st.style.color='#b3261e';st.textContent='Gagal memeriksa lokasi. Periksa koneksi internet.'}
+}
+g$('gpsDesa').oninput=()=>{desaManual=!!g$('gpsDesa').value.trim();refresh()};
+g$('gpsTempat').addEventListener('input',()=>{tempatManual=!!g$('gpsTempat').value.trim()});
+g$('gpsMyLoc').onclick=()=>{
+  if(!navigator.geolocation){toast('Browser tidak mendukung lokasi.');return}
+  navigator.geolocation.getCurrentPosition(p=>{ensureMap();desaManual=false;tempatManual=false;gpsMap.setView([p.coords.latitude,p.coords.longitude],17)},()=>toast('Izinkan akses lokasi di browser.'),{enableHighAccuracy:true});
+};
+
+function stampTime(i){
+  const d=g$('gpsDate').value,t=g$('gpsTime').value;if(!d||!t)return '';
+  const[y,m,dd]=d.split('-').map(Number),[hh,mm]=t.split(':').map(Number);
+  const step=parseInt(g$('gpsStep').value)||0;
+  const x=new Date(Date.UTC(y,m-1,dd,hh,mm)+i*step*60000);
+  return `${HARI[x.getUTCDay()]}, ${p2(x.getUTCDate())}/${p2(x.getUTCMonth()+1)}/${x.getUTCFullYear()} ${p2(x.getUTCHours())}:${p2(x.getUTCMinutes())} GMT +07:00`;
+}
+function wrapText(g,text,maxw){
+  const words=text.split(/\s+/).filter(Boolean),lines=[];let line='';
+  words.forEach(w=>{const t=line?line+' '+w:w;if(g.measureText(t).width>maxw&&line){lines.push(line);line=w}else line=t});
+  if(line)lines.push(line);return lines;
+}
+function layout(g,rows,mw,k){
+  const out=[];let y=0;
+  rows.forEach(([txt,sz,wt],idx)=>{
+    const px=Math.round(sz*k);g.font=`${wt} ${px}px Arial, sans-serif`;
+    wrapText(g,txt,mw).forEach(l=>{out.push({t:l,font:g.font,y});y+=px*1.22});
+    if(idx<rows.length-1)y+=px*0.3;
+  });
+  return{out,h:y};
+}
+async function stamp(i){
+  const bmp=await createImageBitmap(G.photos[i]);
+  const W=bmp.width,H=bmp.height,s=Math.min(W,H)/467;
+  const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  g.drawImage(bmp,0,0);
+  if(!G.loc)return c;
+  const pad=Math.round(12*s),mw=W-pad*2;
+  const F=readFields(),desa=T(F.desa),tempat=T(F.tempat);
+  const title=[tempat,desa,F.kec?'Kec. '+F.kec:'',F.kab?'Kabupaten '+F.kab:'',F.prov,F.neg].filter(Boolean).join(', ');
+  const addr=[tempat,desa,F.kec,F.kab,F.prov,F.neg].filter(Boolean).join(', ');
+  const rows=[[title,17*s,'bold'],[addr,13.5*s,'normal'],[`Lat ${fmt(G.loc.lat)}° Long ${fmt(G.loc.lon)}°`,13.5*s,'normal'],[stampTime(i),13.5*s,'normal']];
+  let k=1,L=layout(g,rows,mw,k);
+  while(L.h>H*0.28&&k>0.6){k-=0.04;L=layout(g,rows,mw,k)}
+  const ph=Math.round(L.h+pad*2),top=H-ph+pad;
+  g.fillStyle='rgba(0,0,0,.66)';g.fillRect(0,H-ph,W,ph);
+  g.textBaseline='top';g.fillStyle='#ffffff';
+  L.out.forEach(l=>{g.font=l.font;g.fillText(l.t,pad,top+l.y)});
+  return c;
+}
+
+let rid=0;
+async function refresh(){
+  readLoc();
+  const id=++rid;
+  if(!G.photos.length){const pv=g$('gpsPreview');pv.width=pv.height=0;return}
+  const c=await stamp(+g$('gpsSel').value||0);
+  if(id!==rid)return;
+  const pv=g$('gpsPreview');pv.width=c.width;pv.height=c.height;pv.getContext('2d').drawImage(c,0,0);
+}
+['gpsTempat','gpsDate','gpsTime','gpsStep'].forEach(id=>g$(id).oninput=refresh);
+g$('gpsPhotos').onchange=e=>{
+  G.photos=[...e.target.files];const s=g$('gpsSel');s.innerHTML='';
+  G.photos.forEach((f,i)=>s.add(new Option(`Foto ${i+1} - ${f.name}`,i)));
+  refresh();
+};
+g$('gpsSel').onchange=refresh;
+
+function needLoc(){
+  if(!G.photos.length){toast('Pilih foto dulu.');return false}
+  if(!G.loc){toast('Geser peta ke lokasi dulu.');return false}
+  return true;
+}
+async function save(i){
+  const c=await stamp(i);
+  c.toBlob(b=>{const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`gps-foto-${i+1}.jpg`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1800)},'image/jpeg',0.95);
+}
+g$('gpsDown').onclick=async()=>{if(needLoc())await save(+g$('gpsSel').value||0)};
+g$('gpsDownAll').onclick=async()=>{
+  if(!needLoc())return;
+  for(let i=0;i<G.photos.length;i++){await save(i);await new Promise(r=>setTimeout(r,700))}
+  toast('Semua foto GPS selesai diunduh.');
+};
+g$('gpsToGrid').onclick=async()=>{
+  if(!needLoc())return;
+  if(G.photos.length>4)toast('Grid hanya 4 foto. Yang dikirim 4 foto pertama.');
+  const files=[];
+  for(let i=0;i<Math.min(4,G.photos.length);i++){
+    const c=await stamp(i);
+    const b=await new Promise(res=>c.toBlob(res,'image/jpeg',0.95));
+    files.push(new File([b],`gps-foto-${i+1}.jpg`,{type:'image/jpeg'}));
+  }
+  setPhotos(files);renderPhotoSlots();await renderPreview();
+  document.querySelector('.tab[data-view="grid"]').click();
+  toast('Foto GPS sudah masuk ke Grid. Lanjutkan isi keterangan.');
+};
+})();
 </script>
 </body>
 </html>
